@@ -1,0 +1,20 @@
+Input Parsing:
+The function reduce_ATM_to_EQTM parses the input string (expected to contain a section starting with TM: for the Turing machine description and Input: for the input w) and separates these components.
+
+Constructing M1:
+M1 is defined by a high-level description:
+
+For any input x not equal to "0", it accepts immediately.
+For x = "0", it simulates the given Turing machine M on input w (with M’s description embedded).
+Therefore, if M accepts w, then M1’s language is Σ* (all strings); if not, M1’s language is Σ* – {"0"}.
+Constructing M2:
+M2 is a fixed Turing machine that unconditionally accepts every input. Its language is always Σ*.
+
+Mapping Reduction Correctness:
+The pair ⟨M1, M2⟩ satisfies that L(M1) = L(M2) if and only if M accepts w. Thus, this reduction is correct and computable.
+
+Demonstration:
+Two test cases are provided:
+
+A positive instance with a machine that always accepts (M_pos).
+A negative instance with a machine that always rejects (M_neg).
