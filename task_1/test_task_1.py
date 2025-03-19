@@ -57,6 +57,43 @@ t1,0,t1
 t1,1,t1
 """
 
+# Missing start value
+y0 = """\
+states: s0,s1
+alphabet: 0,1
+start:
+accept: s1
+transitions:
+s0,0,s1
+s0,1,s0
+s1,0,s1
+s1,1,s1
+"""
+
+# Missing states
+y1 = """\
+states:
+alphabet: 0,1
+start: t0
+accept: t1
+transitions:
+t0,1,t1
+t0,0,t0
+t1,0,t1
+t1,1,t1
+"""
+
+# Incomplete transition
+y2 = """\
+states: a,b
+alphabet: 0,1
+start: a
+accept: b
+transitions:
+a,0,b
+a,1  # incomplete transition (missing next state)
+"""
+
 
 def test_are_properties_consistent_inconsistent():
     """
@@ -78,3 +115,25 @@ def test_are_properties_consistent_consistent():
     assert (
         result is True
     ), "Expected consistency for DFAs that require at least one '0' and one '1'."
+
+
+@pytest.mark.parametrize(
+    "dfa_str1, dfa_str2, expected_error",
+    [
+        (y0, w0, "start"),  # y0 is missing a valid start state.
+        (w0, y1, "states"),  # y1 is missing states.
+        (
+            y0,
+            y1,
+            "start",
+        ),  # Either error could be raised; matching one of the keywords is acceptable.
+        (y2, w0, "incomplete transition"),  # y2 has a incomplete transition.
+    ],
+)
+def test_invalid_dfa_encoding(dfa_str1, dfa_str2, expected_error):
+    """
+    Test that passing incorrectly encoded DFA strings raises a ValueError.
+    The error message should mention the expected missing/incorrect component.
+    """
+    with pytest.raises(ValueError, match=expected_error):
+        are_properties_consistent(dfa_str1, dfa_str2)

@@ -69,7 +69,6 @@ def construct_M1(M_description, w):
         "  - If input x == '0', simulate the following Turing machine M on input w.\n"
         "M_simulation:\n" + M_description + "\n"
         "Input for simulation: " + w + "\n"
-        "Note: Thus, L(M1)=Σ* if M accepts w, otherwise L(M1)=Σ* - {'0'}.\n"
     )
     return M1
 

@@ -9,7 +9,7 @@ from collections import deque
 
 def parse_dfa(dfa_str):
     """
-    Parses a DFA from a string representation.
+    Parses a DFA from a string representation and validates its format.
 
     Expected format:
         states: state1,state2,...
@@ -20,6 +20,15 @@ def parse_dfa(dfa_str):
         current_state,symbol,next_state
         ...
 
+    Validations performed:
+      - All required headers must be present.
+      - None of the required fields (states, alphabet, start, accept) may be empty.
+      - The start state must be in the set of states.
+      - All accept states must be in the set of states.
+      - Each transition line must consist of exactly three comma-separated values.
+      - For each transition, the current state and next state must belong to the set of states,
+        and the symbol must be in the alphabet.
+
     Returns:
         A dictionary with the following keys:
           - 'states': set of states
@@ -27,33 +36,83 @@ def parse_dfa(dfa_str):
           - 'start': start state
           - 'accept': set of accepting states
           - 'transitions': dictionary mapping (state, symbol) -> next_state
+
+    Raises:
+        ValueError: If the DFA string is not correctly encoded.
     """
     lines = [line.strip() for line in dfa_str.strip().splitlines() if line.strip()]
     dfa = {}
     transitions = {}
 
-    # Process each header line until we reach transitions
+    # Track whether each header has been found.
+    headers_found = {
+        "states": False,
+        "alphabet": False,
+        "start": False,
+        "accept": False,
+        "transitions": False,
+    }
+
     for i, line in enumerate(lines):
         if line.startswith("states:"):
-            dfa["states"] = set(s.strip() for s in line[len("states:") :].split(","))
+            headers_found["states"] = True
+            states_val = line[len("states:") :].strip()
+            if not states_val:
+                raise ValueError("The 'states' line is empty.")
+            dfa["states"] = set(s.strip() for s in states_val.split(",") if s.strip())
         elif line.startswith("alphabet:"):
+            headers_found["alphabet"] = True
+            alphabet_val = line[len("alphabet:") :].strip()
+            if not alphabet_val:
+                raise ValueError("The 'alphabet' line is empty.")
             dfa["alphabet"] = set(
-                s.strip() for s in line[len("alphabet:") :].split(",")
+                s.strip() for s in alphabet_val.split(",") if s.strip()
             )
         elif line.startswith("start:"):
-            dfa["start"] = line[len("start:") :].strip()
+            headers_found["start"] = True
+            start_val = line[len("start:") :].strip()
+            if not start_val:
+                raise ValueError("The 'start' state is empty.")
+            dfa["start"] = start_val
         elif line.startswith("accept:"):
-            dfa["accept"] = set(s.strip() for s in line[len("accept:") :].split(","))
+            headers_found["accept"] = True
+            accept_val = line[len("accept:") :].strip()
+            if not accept_val:
+                raise ValueError("The 'accept' states line is empty.")
+            dfa["accept"] = set(s.strip() for s in accept_val.split(",") if s.strip())
         elif line.startswith("transitions:"):
-            # The rest of the lines specify transitions.
+            headers_found["transitions"] = True
+            # Process the rest of the lines as transitions.
             for trans_line in lines[i + 1 :]:
                 parts = [p.strip() for p in trans_line.split(",")]
                 if len(parts) != 3:
-                    continue  # Skip malformed lines.
+                    raise ValueError(f"Malformed transition line: '{trans_line}'")
                 curr, sym, nxt = parts
                 transitions[(curr, sym)] = nxt
             break  # Exit once transitions are processed.
+
+    # Ensure all required headers were found.
+    for key, found in headers_found.items():
+        if not found:
+            raise ValueError(f"Missing required DFA component: {key}")
+
     dfa["transitions"] = transitions
+
+    # Validate that the start state is in the set of states.
+    if dfa["start"] not in dfa["states"]:
+        raise ValueError("The start state is not in the set of states.")
+    # Validate that each accept state is in the set of states.
+    if not dfa["accept"].issubset(dfa["states"]):
+        raise ValueError("Some accept states are not in the set of states.")
+    # Validate each transition.
+    for (curr, sym), nxt in transitions.items():
+        if curr not in dfa["states"]:
+            raise ValueError(f"Transition error: current state '{curr}' not in states.")
+        if nxt not in dfa["states"]:
+            raise ValueError(f"Transition error: next state '{nxt}' not in states.")
+        if sym not in dfa["alphabet"]:
+            raise ValueError(f"Transition error: symbol '{sym}' not in alphabet.")
+
     return dfa
 
 
@@ -127,13 +186,12 @@ def is_language_empty(dfa):
             next_state = dfa["transitions"].get((state, sym))
             if next_state and next_state not in visited:
                 queue.append(next_state)
-    return True
+    return True  # An accepting state is not reachable.
 
 
 def are_properties_consistent(dfa_str1, dfa_str2):
     """
     Given two DFA representations as strings, determines whether their languages are consistent
-    (i.e., whether there exists at least one string accepted by both DFAs).
 
     Returns:
         True if the intersection is nonempty (properties are consistent), else False.
